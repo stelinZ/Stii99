@@ -69,6 +69,27 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Repair missing launcher color resource
+        shell: bash
+        run: |
+          RES_DIR="$PROJECT_DIR/app/src/main/res"
+          if [ ! -d "$RES_DIR" ]; then
+            echo "::error::Android app resources directory not found: $RES_DIR"
+            exit 1
+          fi
+          if ! grep -Rqs 'name=["'"'"']ic_bg["'"'"']' "$RES_DIR"/values* 2>/dev/null; then
+            mkdir -p "$RES_DIR/values"
+            cat > "$RES_DIR/values/sonypods_ci_colors.xml" <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="ic_bg">#101820</color>
+          </resources>
+          XML
+            echo "Added missing ic_bg launcher background color."
+          else
+            echo "ic_bg color resource already exists."
+          fi
+
       - name: Build debug APK
         shell: bash
         run: |
