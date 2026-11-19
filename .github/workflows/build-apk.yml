@@ -30,7 +30,7 @@ jobs:
           destination = pathlib.Path("source").resolve()
           with zipfile.ZipFile(archive) as z:
               for item in z.infolist():
-                  name = item.filename.replace("\\", "/").lstrip("/")
+                  name = item.filename.replace("\", "/").lstrip("/")
                   target = (destination / name).resolve()
                   if target != destination and destination not in target.parents:
                       raise SystemExit(f"Unsafe archive path: {item.filename}")
@@ -100,17 +100,17 @@ jobs:
 
           s = s.replace(
               "#loading.hide{opacity:0;pointer-events:none}",
-              "#loading.hide{opacity:0;pointer-events:none}\\n#loadError{display:none;max-width:85%;padding:12px 16px;border:1px solid rgba(255,120,120,.28);border-radius:12px;background:rgba(20,12,16,.88);color:#ffd4d4;font:12px/1.45 sans-serif;text-align:center}\\n#loadError.show{display:block}\\n#loadError small{display:block;margin-top:6px;color:#d4aeb3;overflow-wrap:anywhere}"
+              "#loading.hide{opacity:0;pointer-events:none}\n#loadError{display:none;max-width:85%;padding:12px 16px;border:1px solid rgba(255,120,120,.28);border-radius:12px;background:rgba(20,12,16,.88);color:#ffd4d4;font:12px/1.45 sans-serif;text-align:center}\n#loadError.show{display:block}\n#loadError small{display:block;margin-top:6px;color:#d4aeb3;overflow-wrap:anywhere}"
           )
           s = s.replace(
               '<div id="loading"><div class="spinner"></div></div>',
               '<div id="loading"><div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div class="spinner"></div><div style="color:#aeb6c8;font:11px sans-serif">Загрузка 3D-модели…</div><div id="loadError"></div></div></div>'
           )
           s = s.replace(
-              "const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });\\nrenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));\\nrenderer.setSize(window.innerWidth, window.innerHeight);",
-              "const renderer = new THREE.WebGLRenderer({ antialias:false, alpha:true, powerPreference:'high-performance', stencil:false, depth:true });\\nrenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));\\nrenderer.setSize(Math.max(1, container.clientWidth || window.innerWidth), Math.max(1, container.clientHeight || window.innerHeight));"
+              "const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });\nrenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));\nrenderer.setSize(window.innerWidth, window.innerHeight);",
+              "const renderer = new THREE.WebGLRenderer({ antialias:false, alpha:true, powerPreference:'high-performance', stencil:false, depth:true });\nrenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));\nrenderer.setSize(Math.max(1, container.clientWidth || window.innerWidth), Math.max(1, container.clientHeight || window.innerHeight));"
           )
-          s = s.replace("renderer.shadowMap.enabled = true;\\nrenderer.shadowMap.type = THREE.PCFSoftShadowMap;", "renderer.shadowMap.enabled = false; // Faster first frame on mobile.")
+          s = s.replace("renderer.shadowMap.enabled = true;\nrenderer.shadowMap.type = THREE.PCFSoftShadowMap;", "renderer.shadowMap.enabled = false; // Faster first frame on mobile.")
           old_loader = """new GLTFLoader().load('models/sony_wf1000xm5_complete.glb', gltf => {
               model = gltf.scene;
               model.traverse(ch => {
@@ -189,19 +189,19 @@ jobs:
               raise SystemExit("Expected original GLTF loader block was not found; refusing a blind patch.")
           s = s.replace(old_loader, new_loader)
           s = s.replace("window.addEventListener('load',()=>{if(window.Android) window.Android.onSceneReady()});",
-                        "window.addEventListener('error', e => console.error('[SonyPods] JS error:', e.message, e.filename, e.lineno));\\nwindow.addEventListener('unhandledrejection', e => console.error('[SonyPods] Promise error:', e.reason));")
-          s = s.replace("camera.aspect=window.innerWidth/window.innerHeight;\\n    camera.updateProjectionMatrix();\\n    renderer.setSize(window.innerWidth,window.innerHeight);",
-                        "const w=Math.max(1,container.clientWidth||window.innerWidth), h=Math.max(1,container.clientHeight||window.innerHeight);\\n    camera.aspect=w/h;\\n    camera.updateProjectionMatrix();\\n    renderer.setSize(w,h);")
+                        "window.addEventListener('error', e => console.error('[SonyPods] JS error:', e.message, e.filename, e.lineno));\nwindow.addEventListener('unhandledrejection', e => console.error('[SonyPods] Promise error:', e.reason));")
+          s = s.replace("camera.aspect=window.innerWidth/window.innerHeight;\n    camera.updateProjectionMatrix();\n    renderer.setSize(window.innerWidth,window.innerHeight);",
+                        "const w=Math.max(1,container.clientWidth||window.innerWidth), h=Math.max(1,container.clientHeight||window.innerHeight);\n    camera.aspect=w/h;\n    camera.updateProjectionMatrix();\n    renderer.setSize(w,h);")
           viewer.write_text(s)
 
           kotlin = root / "app/src/main/java/app/sonypods/Pods3DCardView.kt"
           k = kotlin.read_text()
           k = k.replace(
-              "settings.allowFileAccess = true\\n            settings.mediaPlaybackRequiresUserGesture = false",
-              "settings.allowFileAccess = true\\n            // GLTFLoader uses fetch() for the local GLB. WebView blocks file-origin requests by default.\\n            @Suppress(\\"DEPRECATION\\")\\n            settings.allowFileAccessFromFileURLs = true\\n            @Suppress(\\"DEPRECATION\\")\\n            settings.allowUniversalAccessFromFileURLs = true\\n            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW\\n            settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT\\n            settings.mediaPlaybackRequiresUserGesture = false"
+              "settings.allowFileAccess = true\n            settings.mediaPlaybackRequiresUserGesture = false",
+              "settings.allowFileAccess = true\n            // GLTFLoader uses fetch() for the local GLB. WebView blocks file-origin requests by default.\n            @Suppress(\"DEPRECATION\")\n            settings.allowFileAccessFromFileURLs = true\n            @Suppress(\"DEPRECATION\")\n            settings.allowUniversalAccessFromFileURLs = true\n            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW\n            settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT\n            settings.mediaPlaybackRequiresUserGesture = false"
           )
           k = k.replace(
-              "webViewClient = WebViewClient()\\n            webChromeClient = WebChromeClient()",
+              "webViewClient = WebViewClient()\n            webChromeClient = WebChromeClient()",
               """webViewClient = object : WebViewClient() {
                   override fun onReceivedError(view: WebView, request: android.webkit.WebResourceRequest, error: android.webkit.WebResourceError) {
                       super.onReceivedError(view, request, error)
@@ -217,8 +217,8 @@ jobs:
               setLayerType(View.LAYER_TYPE_HARDWARE, null)"""
           )
           k = k.replace(
-              "sceneReady = true\\n                        evaluateJavascript(\\"sonyPodsApi.open()\\", null)",
-              "sceneReady = true\\n                        android.util.Log.i(\\"SonyPods3D\\", \\"Three.js scene and GLB model are ready\\")\\n                        evaluateJavascript(\\"if(window.sonyPodsApi){sonyPodsApi.open();true}else{false}\\", null)"
+              "sceneReady = true\n                        evaluateJavascript(\"sonyPodsApi.open()\", null)",
+              "sceneReady = true\n                        android.util.Log.i(\"SonyPods3D\", \"Three.js scene and GLB model are ready\")\n                        evaluateJavascript(\"if(window.sonyPodsApi){sonyPodsApi.open();true}else{false}\", null)"
           )
           if "allowFileAccessFromFileURLs" not in k or "onConsoleMessage" not in k:
               raise SystemExit("WebView patch did not apply completely.")
