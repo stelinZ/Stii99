@@ -108,6 +108,14 @@ jobs:
             echo "ic_bg color resource already exists."
           fi
 
+      - name: Inspect Kotlin compile failure context
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="$PROJECT_DIR/app/src/main/java/app/sonypods/PopupController.kt"
+          echo "Inspecting $FILE"
+          nl -ba "$FILE" | sed -n '1,120p'
+
       - name: Build debug APK
         shell: bash
         run: |
