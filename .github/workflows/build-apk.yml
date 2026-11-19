@@ -243,61 +243,51 @@ jobs:
           import pathlib, sys
           p = pathlib.Path(sys.argv[1]) / "app/src/main/java/app/sonypods/PodsService.kt"
           s = p.read_text()
-          s = s.replace("import android.bluetooth.BluetoothDevice", """import android.bluetooth.BluetoothDevice
-          import android.bluetooth.BluetoothA2dp
+          additions = """import android.bluetooth.BluetoothA2dp
           import android.bluetooth.BluetoothHeadset
           import android.bluetooth.BluetoothManager
-          import android.bluetooth.BluetoothProfile""")
-          old_rx = """            when (i.action) {
+          import android.bluetooth.BluetoothProfile
+          """
+          anchor = "import android.bluetooth.BluetoothDevice\n"
+          if "import android.bluetooth.BluetoothA2dp" not in s:
+              if anchor not in s: raise SystemExit("BluetoothDevice import anchor not found")
+              s = s.replace(anchor, anchor + additions, 1)
+
+          old_when = """            when (i.action) {
                           BluetoothDevice.ACTION_ACL_CONNECTED -> onConnected(d)
                           BluetoothDevice.ACTION_ACL_DISCONNECTED -> popup.dismiss()
                       }"""
-          new_rx = """            when (i.action) {
-                          BluetoothDevice.ACTION_ACL_CONNECTED -> onConnected(d)
-                          BluetoothDevice.ACTION_ACL_DISCONNECTED -> popup.dismiss()
+          new_when = """            when (i.action) {
+                          BluetoothDevice.ACTION_ACL_CONNECTED,
                           BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED,
                           BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED -> {
-                              when (i.getIntExtra(BluetoothProfile.EXTRA_STATE, BluetoothProfile.STATE_DISCONNECTED)) {
-                                  BluetoothProfile.STATE_CONNECTED -> onConnected(d)
-                                  BluetoothProfile.STATE_DISCONNECTED -> popup.dismiss()
-                              }
+                              val state = if (i.action == BluetoothDevice.ACTION_ACL_CONNECTED) BluetoothProfile.STATE_CONNECTED
+                                  else i.getIntExtra(BluetoothProfile.EXTRA_STATE, BluetoothProfile.STATE_DISCONNECTED)
+                              if (state == BluetoothProfile.STATE_CONNECTED) onConnected(d)
+                              else if (state == BluetoothProfile.STATE_DISCONNECTED) popup.dismiss()
                           }
+                          BluetoothDevice.ACTION_ACL_DISCONNECTED -> popup.dismiss()
                       }"""
-          if old_rx not in s:
-              raise SystemExit("Bluetooth receiver block not found; refusing unsafe patch.")
-          s = s.replace(old_rx, new_rx)
-          old_filter = """            addAction(BluetoothDevice.ACTION_ACL_CONNECTED); addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
-          }
-          if (Build.VERSION.SDK_INT >= 33) registerReceiver(rx, f, Context.RECEIVER_EXPORTED) else registerReceiver(rx, f)
-          }"""
-          new_filter = """            addAction(BluetoothDevice.ACTION_ACL_CONNECTED); addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
-              addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
-              addAction(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED)
-          }
-          if (Build.VERSION.SDK_INT >= 33) registerReceiver(rx, f, Context.RECEIVER_EXPORTED) else registerReceiver(rx, f)
+          if "BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED" not in s:
+              if old_when not in s: raise SystemExit("Bluetooth receiver when-block not found")
+              s = s.replace(old_when, new_when, 1)
 
-          // If the service starts after the earbuds have already connected, recover their current A2DP state.
-          try {
-              val adapter = (getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
-              adapter.getProfileProxy(this, object : BluetoothProfile.ServiceListener {
-                  override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
-                      try {
-                          proxy.connectedDevices.firstOrNull { matches(this@PodsService, it) }?.let { onConnected(it) }
-                      } finally {
-                          adapter.closeProfileProxy(profile, proxy)
-                      }
-                  }
-                  override fun onServiceDisconnected(profile: Int) { }
-              }, BluetoothProfile.A2DP)
-          } catch (e: Exception) {
-              android.util.Log.w("SonyPods", "Could not query active Bluetooth audio devices", e)
-          }
-          }"""
-          if old_filter not in s:
-              raise SystemExit("Bluetooth intent filter block not found; refusing unsafe patch.")
-          s = s.replace(old_filter, new_filter)
+          old_filter = """        val f = IntentFilter().apply {
+                      addAction(BluetoothDevice.ACTION_ACL_CONNECTED); addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+                  }"""
+          new_filter = """        val f = IntentFilter().apply {
+                      addAction(BluetoothDevice.ACTION_ACL_CONNECTED); addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+                      addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
+                      addAction(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED)
+                  }"""
+          if "addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)" not in s:
+              if old_filter not in s: raise SystemExit("Bluetooth intent filter block not found")
+              s = s.replace(old_filter, new_filter, 1)
+
+          if "BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED" not in s or "BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED" not in s:
+              raise SystemExit("Bluetooth profile receiver patch incomplete")
           p.write_text(s)
-          print("Added A2DP/HFP connection events and startup connected-device detection.")
+          print("Added A2DP/HFP connection events; existing ACL events retained.")
           PY
 
       - name: Repair missing launcher color resource
