@@ -30,7 +30,7 @@ jobs:
           destination = pathlib.Path("source").resolve()
           with zipfile.ZipFile(archive) as z:
               for item in z.infolist():
-                  name = item.filename.replace("\\\\", "/").lstrip("/")
+                  name = item.filename.replace("\\", "/").lstrip("/")
                   target = (destination / name).resolve()
                   if target != destination and destination not in target.parents:
                       raise SystemExit(f"Unsafe archive path: {item.filename}")
