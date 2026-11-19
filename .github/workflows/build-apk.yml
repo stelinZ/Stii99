@@ -108,6 +108,28 @@ jobs:
             echo "ic_bg color resource already exists."
           fi
 
+      - name: Fix non-exhaustive popup view type handling
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="$PROJECT_DIR/app/src/main/java/app/sonypods/PopupController.kt"
+          python3 - "$FILE" <<'PY'
+          import pathlib, sys
+          p = pathlib.Path(sys.argv[1])
+          s = p.read_text()
+          old = """                    is PodsCardView -> { v.title = title; v.setState(s); schedule(); return@post }
+                  }
+          """
+          new = """                    is PodsCardView -> { v.title = title; v.setState(s); schedule(); return@post }
+                    else -> { dismiss() }
+                  }
+          """
+          if s.count(old) != 1:
+              raise SystemExit("Expected PopupController when block not found exactly once; refusing unsafe patch")
+          p.write_text(s.replace(old, new))
+          print("Patched PopupController: unknown existing overlay view is dismissed before creating replacement.")
+          PY
+
       - name: Inspect Kotlin compile failure context
         shell: bash
         run: |
