@@ -161,3 +161,15 @@ jobs:
           path: apk-output/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload extracted source for 3D viewer diagnosis
+        uses: actions/upload-artifact@v4
+        with:
+          name: SonyPods-v2.0-source-diagnostic
+          path: |
+            source/**/app/src/main/assets/**
+            source/**/app/src/main/java/**
+            source/**/app/src/main/res/**
+            source/**/app/src/main/AndroidManifest.xml
+          if-no-files-found: warn
+          retention-days: 3
