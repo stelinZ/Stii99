@@ -77,7 +77,7 @@ jobs:
             echo "::error::Android app resources directory not found: $RES_DIR"
             exit 1
           fi
-          if ! grep -Rqs 'name=["'"'"']ic_bg["'"'"']' "$RES_DIR"/values* 2>/dev/null; then
+          if ! grep -Rqs 'name=["'\''"']ic_bg["'\''"']' "$RES_DIR"/values* 2>/dev/null; then
             mkdir -p "$RES_DIR/values"
             cat > "$RES_DIR/values/sonypods_ci_colors.xml" <<'XML'
           <?xml version="1.0" encoding="utf-8"?>
@@ -93,13 +93,18 @@ jobs:
       - name: Build debug APK
         shell: bash
         run: |
+          set -euo pipefail
           gradle -p "$PROJECT_DIR" clean assembleDebug --no-daemon --stacktrace
           mkdir -p "$GITHUB_WORKSPACE/apk-output"
-          find "$PROJECT_DIR" -type f -path "*/build/outputs/apk/debug/*.apk" -exec cp {} "$GITHUB_WORKSPACE/apk-output/" +
-          if [ -z "$(find "$GITHUB_WORKSPACE/apk-output" -name '*.apk' -print -quit)" ]; then
+          while IFS= read -r -d '' apk; do
+            cp "$apk" "$GITHUB_WORKSPACE/apk-output/"
+          done < <(find "$PROJECT_DIR" -type f -path '*/build/outputs/apk/debug/*.apk' -print0)
+          if [ -z "$(find "$GITHUB_WORKSPACE/apk-output" -type f -name '*.apk' -print -quit)" ]; then
             echo "::error::Gradle completed but no debug APK was found."
             exit 1
           fi
+          echo "APK files staged for upload:"
+          ls -lh "$GITHUB_WORKSPACE/apk-output"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
