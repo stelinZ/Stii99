@@ -126,7 +126,7 @@ jobs:
               print("Fallback already present.")
           else:
               lines.insert(i + 1, indent + "else -> { dismiss() }")
-              p.write_text("\\n".join(lines) + "\\n")
+              p.write_text("\n".join(lines) + "\n")
               print("Added exhaustive fallback branch to PopupController.")
           PY
 
