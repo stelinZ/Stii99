@@ -114,18 +114,20 @@ jobs:
           set -euo pipefail
           FILE="$PROJECT_DIR/app/src/main/java/app/sonypods/PopupController.kt"
           python3 - "$FILE" <<'PY'
-          import pathlib, re, sys
+          import pathlib, sys
           p = pathlib.Path(sys.argv[1])
-          s = p.read_text()
-          pattern = r'(?m)^([ \\t]*)is PodsCardView ->[^\\n]*\\n([ \\t]*\\})'
-          def add_else(m):
-              indent = m.group(1)
-              return m.group(0).replace(m.group(2), indent + "else -> { dismiss() }\\n" + m.group(2), 1)
-          s2, count = re.subn(pattern, add_else, s, count=1)
-          if count != 1:
-              raise SystemExit("Could not safely locate PopupController PodsCardView branch")
-          p.write_text(s2)
-          print("Added exhaustive fallback branch to PopupController.")
+          lines = p.read_text().splitlines()
+          matches = [i for i, line in enumerate(lines) if "is PodsCardView ->" in line]
+          if len(matches) != 1:
+              raise SystemExit(f"Expected one PodsCardView branch, found {len(matches)}")
+          i = matches[0]
+          indent = lines[i][:len(lines[i]) - len(lines[i].lstrip())]
+          if i + 1 < len(lines) and "else -> { dismiss() }" in lines[i + 1]:
+              print("Fallback already present.")
+          else:
+              lines.insert(i + 1, indent + "else -> { dismiss() }")
+              p.write_text("\\n".join(lines) + "\\n")
+              print("Added exhaustive fallback branch to PopupController.")
           PY
 
       - name: Inspect Kotlin compile failure context
