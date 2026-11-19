@@ -114,20 +114,18 @@ jobs:
           set -euo pipefail
           FILE="$PROJECT_DIR/app/src/main/java/app/sonypods/PopupController.kt"
           python3 - "$FILE" <<'PY'
-          import pathlib, sys
+          import pathlib, re, sys
           p = pathlib.Path(sys.argv[1])
           s = p.read_text()
-          old = """                    is PodsCardView -> { v.title = title; v.setState(s); schedule(); return@post }
-                  }
-          """
-          new = """                    is PodsCardView -> { v.title = title; v.setState(s); schedule(); return@post }
-                    else -> { dismiss() }
-                  }
-          """
-          if s.count(old) != 1:
-              raise SystemExit("Expected PopupController when block not found exactly once; refusing unsafe patch")
-          p.write_text(s.replace(old, new))
-          print("Patched PopupController: unknown existing overlay view is dismissed before creating replacement.")
+          pattern = r'(?m)^([ \\t]*)is PodsCardView ->[^\\n]*\\n([ \\t]*\\})'
+          def add_else(m):
+              indent = m.group(1)
+              return m.group(0).replace(m.group(2), indent + "else -> { dismiss() }\\n" + m.group(2), 1)
+          s2, count = re.subn(pattern, add_else, s, count=1)
+          if count != 1:
+              raise SystemExit("Could not safely locate PopupController PodsCardView branch")
+          p.write_text(s2)
+          print("Added exhaustive fallback branch to PopupController.")
           PY
 
       - name: Inspect Kotlin compile failure context
