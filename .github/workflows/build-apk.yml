@@ -44,3 +44,27 @@ jobs:
         run: |
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        shell: bash
+        run: |
+          gradle -p "$PROJECT_DIR" clean assembleDebug --no-daemon --stacktrace
+          mkdir -p "$GITHUB_WORKSPACE/apk-output"
+          find "$PROJECT_DIR" -type f -path "*/build/outputs/apk/debug/*.apk" -exec cp {} "$GITHUB_WORKSPACE/apk-output/" +
+          if [ -z "$(find "$GITHUB_WORKSPACE/apk-output" -name '*.apk' -print -quit)" ]; then
+            echo "::error::Gradle completed but no debug APK was found."
+            exit 1
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SonyPods-debug-APK
+          path: apk-output/*.apk
+          if-no-files-found: error
+          retention-days: 14
